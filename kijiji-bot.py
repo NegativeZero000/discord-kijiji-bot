@@ -5,14 +5,23 @@
 import discord
 from discord.ext import commands
 from discord.ext.commands import Bot
+# Threading
 import asyncio
+import aiofiles
 # Miscellaneous imports
+import logging
 import os
 from pathlib import Path
 import json
 import datetime
 import re
 import random
+
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
 
 class KijijiListing(object):
     '''The basic Kijiji Listing information'''
@@ -61,6 +70,7 @@ def kijiji_json_parse(dictionary):
                 dictionary['postedasdate'] = datetime.datetime.utcfromtimestamp(unix_date).strftime('%B %#d, %#I:%M')
     return dictionary
 
+
 # Scripts running location. Only set if called via python.exe
 __location__ = os.path.realpath(
     # From https://docs.python.org/3/library/os.path.html
@@ -101,7 +111,7 @@ bot.remove_command("help")
 async def on_ready():
     """Event for when the bot is ready to start working"""
     print("Ready when you are")
-    print("I am runing on " + bot.user.name)
+    print("I am running on " + bot.user.name)
     print("With the id " + bot.user.id)
     await bot.change_presence(game=discord.Game(name='hard to get'))
 
@@ -148,14 +158,32 @@ async def json_trawler_task():
                 for childitem in list(json_directory.iterdir())[0:2]:
                     print("Working with: {}".format(childitem))
                     # Open the file and convert it from json
-                    with open(childitem) as listing_file:
-                        listing_options = json.load(listing_file, object_hook=kijiji_json_parse)
+                    async with aiofiles.open(childitem) as listing_file:
+                        contents = await listing_file.read()
+                        listing_options = json.loads(contents, object_hook=kijiji_json_parse)
                         # Create a kijiji listing object
                         kijiji_listing = KijijiListing(dictionary=listing_options)
-                    os.remove(childitem)
-                    print(kijiji_listing.to_embed())
+                    # await aiofiles.os.remove(childitem)
+                        listing_embed = discord.Embed(
+                            title=kijiji_listing.title,
+                            description=kijiji_listing.description,
+                            color=discord.Colour(hex(random.randint(0, 16777215))),
+                            url=kijiji_listing.url)
+                        listing_embed.add_field(
+                            name='Location',
+                            value=kijiji_listing.location,
+                            inline=True)
+                        listing_embed.add_field(
+                            name='Price',
+                            value=kijiji_listing.price,
+                            inline=True)
+                        listing_embed.set_image(
+                            url=kijiji_listing.imageurl)
+                        listing_embed.set_thumbnail(
+                            url='https://www.shareicon.net/data/128x128/2016/08/18/810389_strategy_512x512.png')
                     # await bot.send_message(destination=channel, embed=kijiji_listing.to_embed())
-                    await bot.say(embed=kijiji_listing.to_embed())
+                        # await bot.say(embed=listing_embed)
+                        await bot.send_message(channel, 'hello')
             except OSError as error:
                 print("'{}' is not a valid directory or is not accessible".format(json_directory))
 
@@ -166,6 +194,7 @@ async def json_trawler_task():
 # Run the bot using config token
 if "token" in (config_options.keys()):
     # Run the bot with the supplied token
+    print('Discord.py version:', discord.__version__)
     bot.loop.create_task(json_trawler_task())
     bot.run(config_options["token"])
 else:
