@@ -13,6 +13,7 @@ import logging
 import os
 from pathlib import Path
 import json
+from pprint import pprint
 import datetime
 import re
 import random
@@ -44,12 +45,12 @@ class KijijiListing(object):
     def to_embed(self):
         '''Created a discord embed from this instances properties'''
         listing_embed = discord.Embed(title=self.title, description=self.description,
-                                      color=discord.Colour(hex(random.randint(0, 16777215))),
+                                      color=discord.Colour(random.randint(0, 16777215)),
                                       url=self.url)
         listing_embed.add_field(name='Location', value=self.location, inline=True)
         listing_embed.add_field(name='Price', value=self.price, inline=True)
-        listing_embed.set_image(url=self.imageurl)
-        listing_embed.set_thumbnail(url='https://www.shareicon.net/data/128x128/2016/08/18/810389_strategy_512x512.png')
+        # listing_embed.set_image(url=self.imageurl)
+        # listing_embed.set_thumbnail(url='https://www.shareicon.net/data/128x128/2016/08/18/810389_strategy_512x512.png')
         return listing_embed
 
 def kijiji_json_parse(dictionary):
@@ -88,7 +89,7 @@ if(config_file_path.is_file()):
     with open(config_file_path) as json_file:
         config_options = json.load(json_file)
 
-    print(config_options)
+    pprint(config_options)
 else:
     print("The configuration file {} does not exist".format(config_file_path))
 
@@ -163,27 +164,8 @@ async def json_trawler_task():
                         listing_options = json.loads(contents, object_hook=kijiji_json_parse)
                         # Create a kijiji listing object
                         kijiji_listing = KijijiListing(dictionary=listing_options)
-                    # await aiofiles.os.remove(childitem)
-                        listing_embed = discord.Embed(
-                            title=kijiji_listing.title,
-                            description=kijiji_listing.description,
-                            color=discord.Colour(hex(random.randint(0, 16777215))),
-                            url=kijiji_listing.url)
-                        listing_embed.add_field(
-                            name='Location',
-                            value=kijiji_listing.location,
-                            inline=True)
-                        listing_embed.add_field(
-                            name='Price',
-                            value=kijiji_listing.price,
-                            inline=True)
-                        listing_embed.set_image(
-                            url=kijiji_listing.imageurl)
-                        listing_embed.set_thumbnail(
-                            url='https://www.shareicon.net/data/128x128/2016/08/18/810389_strategy_512x512.png')
-                    # await bot.send_message(destination=channel, embed=kijiji_listing.to_embed())
-                        # await bot.say(embed=listing_embed)
-                        await bot.send_message(channel, 'hello')
+                        pprint(listing_options)
+                        await bot.send_message(destination=channel, embed=kijiji_listing.to_embed())
             except OSError as error:
                 print("'{}' is not a valid directory or is not accessible".format(json_directory))
 
