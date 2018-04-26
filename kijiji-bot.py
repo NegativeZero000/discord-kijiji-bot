@@ -84,10 +84,8 @@ def file_deleter():
         file_path = file_bucket.get()
         if file_path is worker_tombstone:
             return
-        try:
+        else:
             os.remove(file_path)
-        except:
-            pass
 
 # Scripts running location. Only set if called via python.exe
 __location__ = os.path.realpath(
@@ -183,8 +181,8 @@ async def json_trawler_task():
                         kijiji_listing = KijijiListing(dictionary=listing_options)
                         # Call embed method and set it to the determined channel
                         await bot.send_message(destination=channel, embed=kijiji_listing.to_embed())
-                        # Now that this file has been processed add it to the deletion queue
-                        file_bucket.put(childitem)
+                    # Now that this file has been processed add it to the deletion queue
+                    file_bucket.put(childitem)
             except OSError as error:
                 print("'{}' is not a valid directory or is not accessible".format(json_directory))
 
