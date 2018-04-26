@@ -18,7 +18,7 @@ from pprint import pprint
 import datetime
 import re
 import random
-from Queue import Queue
+import queue
 
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
@@ -27,7 +27,7 @@ handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(me
 logger.addHandler(handler)
 
 # Location for files to be deleted my a worker process
-file_bucket = Queue()
+file_bucket = queue.Queue()
 worker_tombstone = object()
 
 class KijijiListing(object):
