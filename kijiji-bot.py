@@ -76,6 +76,11 @@ def kijiji_json_parse(dictionary):
                 unix_date = int(regex_match.group(0)) / 1000
                 # Convert it to a EST string date
                 dictionary['postedasdate'] = datetime.datetime.utcfromtimestamp(unix_date).strftime('%B %#d, %#I:%M')
+            elif key == 'imageurl':
+                # This url might contain a tilde which Discord will have an issue with
+                # Replace the tilde with a URL encoded version.
+                dictionary['imageurl'] = dictionary['imageurl'].replace('~', '%7E')
+
     return dictionary
 
 def file_deleter():
