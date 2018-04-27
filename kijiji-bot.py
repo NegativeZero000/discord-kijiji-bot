@@ -1,5 +1,5 @@
 # Kijiji Bot
-# Uses Python 3.7
+# Uses Python 3.6.5
 
 # Discord specific imports
 import discord
@@ -20,6 +20,7 @@ import re
 import random
 import queue
 
+# Set up Discord loggin
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
@@ -42,6 +43,7 @@ class KijijiListing(object):
         self.description = dictionary['shortdescription']
         self.location = dictionary['location']
         self.price = dictionary['price']
+        self.thumbnail = 'https://www.shareicon.net/data/128x128/2016/08/18/810389_strategy_512x512.png'
 
     def __str__(self):
         return 'Title: {}\nDescription: {}\nPrice: {}\nURL: {}'.format(
@@ -57,7 +59,8 @@ class KijijiListing(object):
         listing_embed.add_field(name='Price', value=self.price, inline=True)
         listing_embed.set_image(url=self.imageurl)
         listing_embed.set_thumbnail(
-            url='https://www.shareicon.net/data/128x128/2016/08/18/810389_strategy_512x512.png')
+            url=self.thumbnail)
+        listing_embed.set_footer(text='Listed: {}'.format(self.posted))
         return listing_embed
 
 def kijiji_json_parse(dictionary):
@@ -68,18 +71,18 @@ def kijiji_json_parse(dictionary):
     dictionary = dict((key.lower(), value) for key, value in dictionary.items())
 
     for key, value in dictionary.items():
-        if key == 'postedasdate':
-            if value is not None and 'Date' in value:
-                # Extract the unix data from the string
-                regex_match = re.search('\d+', value)
-                # This is from PowerShell and is unix date in milliseconds
-                unix_date = int(regex_match.group(0)) / 1000
-                # Convert it to a EST string date
-                dictionary['postedasdate'] = datetime.datetime.utcfromtimestamp(unix_date).strftime('%B %#d, %#I:%M')
-            elif key == 'imageurl':
-                # This url might contain a tilde which Discord will have an issue with
-                # Replace the tilde with a URL encoded version.
-                dictionary['imageurl'] = dictionary['imageurl'].replace('~', '%7E')
+        # PowerShell stores JSON dates as: \/Date(1524084902329)\/"
+        if key == 'postedasdate' and value is not None and 'Date' in value:
+            # Extract the unix data from the string
+            regex_match = re.search('\d+', value)
+            # This is from PowerShell and is unix date in milliseconds
+            unix_date = int(regex_match.group(0)) / 1000
+            # Convert it to a EST string date
+            dictionary['postedasdate'] = datetime.datetime.utcfromtimestamp(unix_date).strftime('%B %#d, %#I:%M')
+        elif key == 'imageurl':
+            # This url might contain a tilde which Discord will have an issue with
+            # Replace the tilde with a URL encoded version
+            dictionary['imageurl'] = dictionary['imageurl'].replace('~', '%7E')
 
     return dictionary
 
@@ -125,8 +128,6 @@ else:
     defined_command_prefix = default_command_prefix
 
 bot = Bot(command_prefix=defined_command_prefix)
-# Remove the built-in help command in place of an embed based one.
-bot.remove_command("help")
 
 @bot.event
 async def on_ready():
@@ -135,7 +136,6 @@ async def on_ready():
     print("I am running on " + bot.user.name)
     print("With the id " + bot.user.id)
     await bot.change_presence(game=discord.Game(name='hard to get'))
-
 
 @bot.command(pass_context=True)
 async def ping(context, *args):
@@ -146,38 +146,17 @@ async def ping(context, *args):
     await bot.delete_message(context.message)
     print("{} has pinged".format(context.message.author))
 
-
-@bot.command(pass_context=True)
-async def help(context):
-    """Discord Embed to display command based help"""
-    embed = discord.Embed(
-        title="Help!",
-        description="Basically, this is how I'm used.",
-        color=0x00a0ea)
-    embed.add_field(
-        name="{}ping".format(config_options["command_prefix"]),
-        value="Verifcation that the bot is running and working.")
-    embed.add_field(
-        name="{}rembed".format(config_options["command_prefix"]),
-        value="Let's you embed with more user input. After entering your \
-            message the bot will ask questions about the color and thumbnail.")
-    embed.set_footer(text="Embed-This!")
-    await bot.say(embed=embed)
-
 async def json_trawler_task():
     await bot.wait_until_ready()
     if 'listing_path' in config_options.keys() and 'posting_channel' in config_options.keys():
         json_directory = Path(config_options["listing_path"])
         channel = discord.Object(id=config_options["posting_channel"])
 
-        # Prep the deletion worker process
-
         while not bot.is_closed:
             # Iterate over the children in the directory
-            print('in loop')
             try:
-                for childitem in list(json_directory.iterdir())[0:2]:
-                    print("Working with: {}".format(childitem))
+                for childitem in list(json_directory.iterdir()):
+                    print("Processed '{}' as {}".format(childitem, datetime.datetime.now().strftime('%B %d, %I:%M%p')))
                     # Open the file and convert it from json
                     async with aiofiles.open(childitem) as listing_file:
                         contents = await listing_file.read()
